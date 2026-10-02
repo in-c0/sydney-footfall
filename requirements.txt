@@ -1,0 +1,6 @@
+numpy>=1.26
+pandas>=2.1
+pyarrow>=14
+scikit-learn>=1.4
+torch>=2.2
+holidays>=0.40

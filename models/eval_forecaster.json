@@ -1,0 +1,12 @@
+{
+  "n_train_days": 8882,
+  "n_test_days": 2232,
+  "seasonal_naive_1w": {
+    "hourly_log_rmse": 0.9,
+    "daily_mdape": 0.095
+  },
+  "gru_forecaster": {
+    "hourly_log_rmse": 0.746,
+    "daily_mdape": 0.1
+  }
+}

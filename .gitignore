@@ -1,0 +1,8 @@
+data/raw/
+data/processed/
+models/cv/
+web/data.json
+__pycache__/
+*.pyc
+.DS_Store
+web/index.html

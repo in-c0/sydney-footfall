@@ -1,0 +1,136 @@
+{
+  "spatial_cv": {
+    "profile": {
+      "cos_survey": {
+        "n": 95166,
+        "log_rmse": 1.375,
+        "log_r2": 0.137,
+        "daily_mdape": 0.717,
+        "within_25pct": 0.165,
+        "site_rank_spearman": -0.178
+      },
+      "cos_sensor": {
+        "n": 185329,
+        "log_rmse": 1.431,
+        "log_r2": 0.403,
+        "daily_mdape": 0.714,
+        "within_25pct": 0.086,
+        "site_rank_spearman": -0.8
+      },
+      "liverpool_camera": {
+        "n": 121181,
+        "log_rmse": 1.904,
+        "log_r2": 0.238,
+        "daily_mdape": 0.796,
+        "within_25pct": 0.137,
+        "site_rank_spearman": -0.343
+      }
+    },
+    "gbm": {
+      "cos_survey": {
+        "n": 95166,
+        "log_rmse": 0.969,
+        "log_r2": 0.571,
+        "daily_mdape": 0.477,
+        "within_25pct": 0.253,
+        "site_rank_spearman": 0.809
+      },
+      "cos_sensor": {
+        "n": 185329,
+        "log_rmse": 1.152,
+        "log_r2": 0.613,
+        "daily_mdape": 0.284,
+        "within_25pct": 0.455,
+        "site_rank_spearman": 1.0
+      },
+      "liverpool_camera": {
+        "n": 121181,
+        "log_rmse": 2.105,
+        "log_r2": 0.069,
+        "daily_mdape": 0.789,
+        "within_25pct": 0.142,
+        "site_rank_spearman": 0.115
+      }
+    },
+    "net": {
+      "cos_survey": {
+        "n": 95166,
+        "log_rmse": 0.906,
+        "log_r2": 0.625,
+        "daily_mdape": 0.422,
+        "within_25pct": 0.28,
+        "site_rank_spearman": 0.876
+      },
+      "cos_sensor": {
+        "n": 185329,
+        "log_rmse": 0.961,
+        "log_r2": 0.73,
+        "daily_mdape": 0.244,
+        "within_25pct": 0.513,
+        "site_rank_spearman": 1.0
+      },
+      "liverpool_camera": {
+        "n": 121181,
+        "log_rmse": 2.144,
+        "log_r2": 0.034,
+        "daily_mdape": 0.785,
+        "within_25pct": 0.127,
+        "site_rank_spearman": 0.324
+      }
+    }
+  },
+  "temporal_holdout": {
+    "profile": {
+      "cos_survey": {
+        "n": 16524,
+        "log_rmse": 1.395,
+        "log_r2": 0.163,
+        "daily_mdape": 0.708,
+        "within_25pct": 0.171,
+        "site_rank_spearman": 0.138
+      },
+      "cos_sensor": {
+        "n": 35320,
+        "log_rmse": 1.242,
+        "log_r2": 0.616,
+        "daily_mdape": 0.577,
+        "within_25pct": 0.286,
+        "site_rank_spearman": 0.775
+      },
+      "liverpool_camera": {
+        "n": 24312,
+        "log_rmse": 1.838,
+        "log_r2": 0.302,
+        "daily_mdape": 0.858,
+        "within_25pct": 0.033,
+        "site_rank_spearman": -0.446
+      }
+    },
+    "net": {
+      "cos_survey": {
+        "n": 16524,
+        "log_rmse": 0.57,
+        "log_r2": 0.86,
+        "daily_mdape": 0.207,
+        "within_25pct": 0.58,
+        "site_rank_spearman": 0.976
+      },
+      "cos_sensor": {
+        "n": 35320,
+        "log_rmse": 0.82,
+        "log_r2": 0.833,
+        "daily_mdape": 0.13,
+        "within_25pct": 0.709,
+        "site_rank_spearman": 1.0
+      },
+      "liverpool_camera": {
+        "n": 24312,
+        "log_rmse": 1.163,
+        "log_r2": 0.72,
+        "daily_mdape": 0.212,
+        "within_25pct": 0.578,
+        "site_rank_spearman": 0.984
+      }
+    }
+  }
+}

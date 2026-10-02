@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sydney footfall model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EEF1; --panel:#FFFFFF; --ink:#1D2B36; --muted:#5D6D79; --street:#C6CFD6; --line:#D5DDE3;
+  --accent:#7B5EA7; --hot:#C8452B; --ring:#1D2B36; --shadow:0 6px 24px rgba(29,43,54,.14);
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E1A26; --panel:#15263A; --ink:#E6EDF2; --muted:#93A5B4; --street:#22374B; --line:#2A4058;
+  --accent:#A98BD6; --hot:#E86A4C; --ring:#E6EDF2; --shadow:0 6px 24px rgba(0,0,0,.45);}}
+:root[data-theme="dark"]{
+  --bg:#0E1A26; --panel:#15263A; --ink:#E6EDF2; --muted:#93A5B4; --street:#22374B; --line:#2A4058;
+  --accent:#A98BD6; --hot:#E86A4C; --ring:#E6EDF2; --shadow:0 6px 24px rgba(0,0,0,.45);}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
+  font:15px/1.45 "Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+#map{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+#map:active{cursor:grabbing}
+header{position:fixed;left:12px;top:calc(12px + env(safe-area-inset-top,0px));max-width:min(420px,calc(100% - 24px));
+  pointer-events:none}
+header h1{font-size:21px;line-height:1.15;margin:0;font-weight:700;letter-spacing:-.01em}
+header p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.areas{pointer-events:auto;margin-top:8px;display:flex;gap:6px}
+button{font:inherit;color:inherit;cursor:pointer}
+.chip{border:1px solid var(--line);background:var(--panel);padding:5px 11px;border-radius:999px;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#dock{position:fixed;left:0;right:0;bottom:0;padding:0 10px calc(10px + env(safe-area-inset-bottom,0px));pointer-events:none}
+.card{pointer-events:auto;background:var(--panel);border-radius:14px;box-shadow:var(--shadow);max-width:560px;margin:0 auto}
+#controls{padding:12px 14px 10px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.days{display:flex;gap:4px}
+#play{width:38px;height:38px;border-radius:50%;border:none;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none}
+#clock{font-size:26px;font-weight:700;min-width:5.2ch}
+#pulse{display:block;width:100%;height:58px;margin-top:8px;touch-action:none;cursor:ew-resize}
+.legend{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px;margin-top:6px}
+.legend i{flex:1;height:6px;border-radius:3px}
+#info{margin-bottom:8px;padding:12px 14px;display:none}
+#info.show{display:block}
+#info h2{font-size:16px;margin:0 32px 2px 0;line-height:1.25}
+#info .sub{color:var(--muted);font-size:13.5px;margin:0}
+#info .stats{display:flex;gap:18px;margin:10px 0 4px}
+#info .stats b{display:block;font-size:22px;line-height:1.1}
+#info .stats span{color:var(--muted);font-size:12.5px}
+#info canvas{width:100%;height:96px;display:block}
+#info .close{position:absolute;right:10px;top:8px;border:none;background:none;font-size:22px;line-height:1;color:var(--muted);padding:4px 8px}
+#info{position:relative}
+.key{display:flex;gap:14px;font-size:12.5px;color:var(--muted);margin-top:4px}
+.key i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+#loading{position:fixed;inset:0;display:grid;place-items:center;color:var(--muted)}
+.hint{color:var(--muted);font-size:12.5px;margin:6px 0 0}
+#about{pointer-events:auto;margin-top:6px;border:none;background:none;padding:0;color:var(--accent);font-size:14px;text-decoration:underline}
+#aboutBox{display:none;pointer-events:auto;margin-top:8px;background:var(--panel);box-shadow:var(--shadow);border-radius:12px;padding:12px 14px;font-size:13.5px;max-height:50vh;overflow:auto}
+#aboutBox.show{display:block}
+#aboutBox p{margin:0 0 8px}
+@media (min-width:900px){#dock{left:auto;right:14px;width:420px;padding-right:0}.card{max-width:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="map" aria-label="Map of predicted pedestrian volume on each street"></canvas>
+<div id="loading">Unpacking 39,000 street predictions…</div>
+<header>
+  <h1>Sydney footfall</h1>
+  <p id="scenario">Predicted people per hour on every street</p>
+  <div class="areas" role="group" aria-label="Area">
+    <button class="chip" data-area="sydney_cbd" aria-pressed="true">City of Sydney</button>
+    <button class="chip" data-area="liverpool" aria-pressed="false">Liverpool CBD</button>
+  </div>
+  <button id="about" aria-expanded="false">How this works</button>
+  <div id="aboutBox">
+    <p>A neural network trained on City of Sydney walking surveys (2013–2026), four City of Sydney automatic counters (2020–2025) and Liverpool City Council people-counting cameras (2023–2024). It reads the shops, offices, food venues, stations and street types around each point from OpenStreetMap, plus hour, day type, season and weather.</p>
+    <p>Scenario: a fair-weather October 2026 day, counted as a two-way footpath cross-section, like the council surveys.</p>
+    <p>Accuracy on survey sites the model never saw: locations ranked correctly with Spearman <span id="rho">0.88</span>; daily totals are off by a median <span id="mdape">42%</span>. Treat colours as relative busyness, and absolute numbers as estimates.</p>
+  </div>
+</header>
+<div id="dock">
+  <div id="info" class="card" aria-live="polite">
+    <button class="close" aria-label="Close details">×</button>
+    <h2 id="iTitle"></h2><p class="sub" id="iSub"></p>
+    <div class="stats" id="iStats"></div>
+    <canvas id="iChart" aria-hidden="true"></canvas>
+    <div class="key" id="iKey"></div>
+  </div>
+  <div id="controls" class="card">
+    <div class="row">
+      <button id="play" aria-label="Play through the day"><svg width="14" height="14" viewBox="0 0 14 14"><path id="playIcon" d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg></button>
+      <div id="clock">17:00</div>
+      <div class="days" role="group" aria-label="Day type">
+        <button class="chip" data-day="mon_thu" aria-pressed="true">Mon–Thu</button>
+        <button class="chip" data-day="fri" aria-pressed="false">Fri</button>
+        <button class="chip" data-day="sat" aria-pressed="false">Sat</button>
+        <button class="chip" data-day="sun" aria-pressed="false">Sun</button>
+      </div>
+    </div>
+    <canvas id="pulse" role="slider" tabindex="0" aria-label="Hour of day" aria-valuemin="0" aria-valuemax="23" aria-valuenow="17"></canvas>
+    <div class="legend"><span id="lgLo">quiet</span><i id="ramp"></i><span id="lgHi">busy</span></div>
+    <p class="hint">Colour ranks each street against all streets in this area. Tap any street for a catchment estimate, or a ring for measured counts.</p>
+  </div>
+</div>
+<script id="payload" type="application/json">/*__DATA__*/</script>
+<script>
+"use strict";
+const RAMP=[[0,"#C6CFD6"],[.18,"#9DB4C8"],[.38,"#7B5EA7"],[.62,"#E3A44A"],[.82,"#C8452B"],[1,"#6E1A10"]];
+const RAMP_DARK=[[0,"#22374B"],[.18,"#3B5E7E"],[.38,"#8A6BC2"],[.62,"#F0B14F"],[.82,"#F06A45"],[1,"#FFD9C2"]];
+const NB=48; // colours = rank of q=25*log1p(people/hour) among all streets, 6am-midnight, all day types
+const $=s=>document.querySelector(s);
+const st={area:"sydney_cbd",day:"mon_thu",hour:17,playing:false,sel:null,view:null};
+let D, A={}, dark=false;
+
+function hex(c){return [1,3,5].map(i=>parseInt(c.slice(i,i+2),16))}
+function lerpRamp(t,r){t=Math.max(0,Math.min(1,t));for(let i=1;i<r.length;i++)if(t<=r[i][0]){const[a,ca]=r[i-1],[b,cb]=r[i],u=(t-a)/(b-a),x=hex(ca),y=hex(cb);return `rgb(${x.map((v,k)=>Math.round(v+(y[k]-v)*u))})`}return r[r.length-1][1]}
+let PAL=[];function buildPalette(){dark=getComputedStyle(document.documentElement).getPropertyValue("--bg").trim().toLowerCase()==="#0e1a26";const r=dark?RAMP_DARK:RAMP;PAL=[...Array(NB)].map((_,i)=>lerpRamp(i/(NB-1),r));$("#ramp").style.background=`linear-gradient(90deg,${r.map(([t,c])=>c+" "+t*100+"%").join(",")})`}
+const ppl=q=>Math.expm1(q/25);
+function rankTable(q){const hist=new Float64Array(256);for(const d in q){const a=q[d];for(let i=0;i<a.length;i++){const h=i%24;if(h>=6)hist[a[i]]++}}
+  let tot=hist.reduce((x,y)=>x+y,0),c=0;const lut=new Float32Array(256);for(let v=0;v<256;v++){c+=hist[v];lut[v]=c/tot}
+  const qAt=p=>{for(let v=0;v<256;v++)if(lut[v]>=p)return v;return 255};return{lut,lo:ppl(qAt(.1)),hi:ppl(qAt(.95))}}
+const fmt=n=>n>=1e5?Math.round(n/1e3)+"k":n>=1e4?(n/1e3).toFixed(1)+"k":Math.round(n).toLocaleString("en-AU");
+
+async function inflate(b64){const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const s=new Blob([bin]).stream().pipeThrough(new DecompressionStream("deflate"));return new Uint8Array(await new Response(s).arrayBuffer())}
+
+async function unpack(name){
+  const a=D.areas[name],[lat0,lon0]=a.origin;
+  const npts=await inflate(a.npts), raw=await inflate(a.pts), pts=new Int16Array(raw.buffer,raw.byteOffset,raw.byteLength/2);
+  const n=npts.length, off=new Uint32Array(n+1), coords=new Float32Array(pts.length), mid=new Float32Array(2*n), len=new Float32Array(n);
+  const kx=111320*Math.cos(lat0*Math.PI/180), ky=110574;
+  let p=0;for(let i=0;i<n;i++){off[i]=p/2;let la=0,lo=0;
+    for(let j=0;j<npts[i];j++){la+=pts[p];lo+=pts[p+1];coords[p]=lo/1e5*kx;coords[p+1]=-la/1e5*ky;p+=2}
+    const s=off[i]*2,e=p-2;mid[2*i]=(coords[s]+coords[e])/2;mid[2*i+1]=(coords[s+1]+coords[e+1])/2;
+    let L=0;for(let k=s;k<e;k+=2)L+=Math.hypot(coords[k+2]-coords[k],coords[k+3]-coords[k+1]);len[i]=L}
+  off[n]=p/2;
+  const q={};for(const d of D.daytypes){const dd=new Int8Array((await inflate(a.pred[d])).buffer);const out=new Uint8Array(dd.length);
+    for(let i=0;i<n;i++){let c=0;for(let h=0;h<24;h++){c+=dd[i*24+h];out[i*24+h]=c}}q[d]=out}
+  const daily={};for(const d of D.daytypes){const t=new Float32Array(n);for(let i=0;i<n;i++){let s=0;for(let h=0;h<24;h++)s+=ppl(q[d][i*24+h]);t[i]=s}daily[d]=t}
+  let minx=1e9,maxx=-1e9,miny=1e9,maxy=-1e9;for(let i=0;i<coords.length;i+=2){minx=Math.min(minx,coords[i]);maxx=Math.max(maxx,coords[i]);miny=Math.min(miny,coords[i+1]);maxy=Math.max(maxy,coords[i+1])}
+  const sites=D.sites.filter(s=>name==="liverpool"?s.source==="liverpool_camera":s.source!=="liverpool_camera").map(s=>({...s,x:(s.lon-lon0)*kx,y:-(s.lat-lat0)*ky}));
+  A[name]={rank:rankTable(q),n,off,coords,mid,len,q,daily,cls:a.cls,box:[minx,miny,maxx,maxy],sites,kx,ky,lat0,lon0};
+}
+
+const cv=$("#map"),ctx=cv.getContext("2d");let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;drawPulse();draw()}
+function fit(){const a=A[st.area],[x0,y0,x1,y1]=a.box,wide=W>=900,pad=24,top=wide?120:150,bot=wide?24:$("#controls").offsetHeight+24,left=pad,right=wide?460:pad;
+  const s=Math.min((W-left-right)/(x1-x0),(H-top-bot)/(y1-y0));st.view={s,tx:left+(W-left-right)/2-s*(x0+x1)/2,ty:top+(H-top-bot)/2-s*(y0+y1)/2}}
+
+function draw(){
+  if(!A[st.area]||!st.view)return;const a=A[st.area],{s,tx,ty}=st.view,q=a.q[st.day],h=st.hour;
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);ctx.lineCap="round";ctx.lineJoin="round";
+  const buckets=Array.from({length:NB},()=>[]);
+  const lut=a.rank.lut;for(let i=0;i<a.n;i++){const b=Math.round(lut[q[i*24+h]]*(NB-1));buckets[b].push(i)}
+  const base=Math.max(.6,Math.min(3.2,s*2.2));
+  for(let b=0;b<NB;b++){const L=buckets[b];if(!L.length)continue;ctx.strokeStyle=PAL[b];ctx.lineWidth=base*(.5+1.5*Math.pow(b/NB,2));ctx.beginPath();
+    for(const i of L){let k=a.off[i]*2;const e=a.off[i+1]*2;ctx.moveTo(a.coords[k]*s+tx,a.coords[k+1]*s+ty);for(k+=2;k<e;k+=2)ctx.lineTo(a.coords[k]*s+tx,a.coords[k+1]*s+ty)}ctx.stroke()}
+  // measured sites
+  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue("--ring");ctx.lineWidth=1.2;ctx.globalAlpha=.75;const rr=Math.max(2.6,Math.min(6,s*12));
+  for(const t of a.sites){ctx.beginPath();ctx.arc(t.x*s+tx,t.y*s+ty,rr,0,7);ctx.stroke()}ctx.globalAlpha=1;
+  if(st.sel&&st.sel.kind==="catch"){ctx.setLineDash([5,4]);ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(st.sel.x*s+tx,st.sel.y*s+ty,st.sel.r*s,0,7);ctx.stroke();ctx.setLineDash([])}
+  if(st.sel&&st.sel.kind==="site"){ctx.lineWidth=3;ctx.beginPath();ctx.arc(st.sel.site.x*s+tx,st.sel.site.y*s+ty,8,0,7);ctx.stroke()}
+}
+
+// ---- hour scrubber that doubles as a city-wide pulse chart ----
+const pc=$("#pulse"),pctx=pc.getContext("2d");
+function cityPulse(){const a=A[st.area],q=a.q[st.day],v=new Float64Array(24);for(let i=0;i<a.n;i++)for(let h=0;h<24;h++)v[h]+=ppl(q[i*24+h])*a.len[i];return v}
+function drawPulse(){if(!A[st.area])return;const rk=A[st.area].rank;$("#lgLo").textContent="under "+fmt(rk.lo)+"/h";$("#lgHi").textContent="over "+fmt(rk.hi)+"/h";const r=pc.getBoundingClientRect(),w=r.width,hh=r.height;pc.width=w*DPR;pc.height=hh*DPR;
+  pctx.setTransform(DPR,0,0,DPR,0,0);pctx.clearRect(0,0,w,hh);const v=cityPulse(),mx=Math.max(...v),bw=w/24,css=getComputedStyle(document.documentElement);
+  for(let h=0;h<24;h++){const bh=Math.max(2,(hh-16)*v[h]/mx);pctx.fillStyle=h===st.hour?css.getPropertyValue("--accent"):css.getPropertyValue("--line");
+    pctx.beginPath();pctx.roundRect(h*bw+1.5,hh-14-bh,bw-3,bh,2);pctx.fill()}
+  pctx.fillStyle=css.getPropertyValue("--muted");pctx.font="11px Atkinson Hyperlegible, system-ui";pctx.textAlign="center";
+  for(const h of [6,12,18])pctx.fillText(h===12?"12pm":h<12?h+"am":(h-12)+"pm",h*bw+bw/2,hh-2)}
+function setHour(h){st.hour=(h+24)%24;$("#clock").textContent=String(st.hour).padStart(2,"0")+":00";pc.setAttribute("aria-valuenow",st.hour);
+  pc.setAttribute("aria-valuetext",$("#clock").textContent);drawPulse();draw();updateScenario();if(st.sel)showSel()}
+function scrub(e){const r=pc.getBoundingClientRect();setHour(Math.max(0,Math.min(23,Math.floor((e.clientX-r.left)/r.width*24))))}
+pc.addEventListener("pointerdown",e=>{pc.setPointerCapture(e.pointerId);scrub(e)});pc.addEventListener("pointermove",e=>{if(e.buttons)scrub(e)});
+pc.addEventListener("keydown",e=>{if(e.key==="ArrowRight"){setHour(st.hour+1);e.preventDefault()}if(e.key==="ArrowLeft"){setHour(st.hour-1);e.preventDefault()}});
+let timer=null;$("#play").onclick=()=>{st.playing=!st.playing;$("#playIcon").setAttribute("d",st.playing?"M3 1.5h3v11H3zM8 1.5h3v11H8z":"M3 1.5v11l9-5.5z");
+  $("#play").setAttribute("aria-label",st.playing?"Pause":"Play through the day");clearInterval(timer);if(st.playing)timer=setInterval(()=>setHour(st.hour+1),matchMedia("(prefers-reduced-motion:reduce)").matches?1500:650)};
+const DAYNAME={mon_thu:"Monday to Thursday",fri:"Friday",sat:"Saturday",sun:"Sunday"};
+function updateScenario(){const h=st.hour,t=h===0?"midnight":h===12?"noon":h<12?h+"am":(h-12)+"pm";$("#scenario").textContent=`${DAYNAME[st.day]}, ${t}, predicted people per hour on every street`}
+
+// ---- pan / zoom ----
+const ptrs=new Map();let drag=null,moved=0;
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0;drag={x:e.clientX,y:e.clientY}});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;const prev=ptrs.get(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const [p1,p2]=[...ptrs.values()],o=[...ptrs.entries()].find(([k])=>k!==e.pointerId)[1];
+    const d0=Math.hypot(prev.x-o.x,prev.y-o.y),d1=Math.hypot(p1.x-p2.x,p1.y-p2.y);zoomAt((p1.x+p2.x)/2,(p1.y+p2.y)/2,d1/Math.max(1,d0));moved+=10}
+  else{const dx=e.clientX-prev.x,dy=e.clientY-prev.y;st.view.tx+=dx;st.view.ty+=dy;moved+=Math.abs(dx)+Math.abs(dy)}requestDraw()});
+cv.addEventListener("pointerup",e=>{ptrs.delete(e.pointerId);if(moved<6&&ptrs.size===0)tap(e.clientX,e.clientY)});
+cv.addEventListener("pointercancel",e=>ptrs.delete(e.pointerId));
+cv.addEventListener("wheel",e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015));requestDraw()},{passive:false});
+function zoomAt(x,y,f){const v=st.view,ns=Math.max(.01,Math.min(3,v.s*f));f=ns/v.s;v.tx=x-(x-v.tx)*f;v.ty=y-(y-v.ty)*f;v.s=ns}
+let raf=0;function requestDraw(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;draw()})}
+
+// ---- tap: measured site or catchment ----
+function tap(cx,cy){const a=A[st.area],{s,tx,ty}=st.view,x=(cx-tx)/s,y=(cy-ty)/s;
+  let best=null,bd=16;for(const t of a.sites){const d=Math.hypot(t.x*s+tx-cx,t.y*s+ty-cy);if(d<bd){bd=d;best=t}}
+  st.sel=best?{kind:"site",site:best}:{kind:"catch",x,y,r:200};showSel();draw()}
+function catchment(sel){const a=A[st.area],q=a.q[st.day],prof=new Float64Array(24);let L=0,top=-1,topv=0;
+  for(let i=0;i<a.n;i++){const dx=a.mid[2*i]-sel.x,dy=a.mid[2*i+1]-sel.y;if(dx*dx+dy*dy>sel.r*sel.r)continue;L+=a.len[i];
+    for(let h=0;h<24;h++)prof[h]+=ppl(q[i*24+h])*a.len[i];if(a.daily[st.day][i]>topv){topv=a.daily[st.day][i];top=i}}
+  return{L,avg:[...prof].map(v=>L?v/L:0),top,topv,topProf:top<0?null:[...Array(24)].map((_,h)=>ppl(q[top*24+h]))}}
+function showSel(){const box=$("#info"),sel=st.sel;box.classList.add("show");const css=getComputedStyle(document.documentElement);
+  if(sel.kind==="catch"){const c=catchment(sel),avgDay=c.avg.reduce((a,b)=>a+b,0);
+    $("#iTitle").textContent="Catchment within 200 m";$("#iSub").textContent=c.L?`${(c.L/1000).toFixed(1)} km of walkable street, ${DAYNAME[st.day]}`:"No mapped streets here";
+    $("#iStats").innerHTML=c.L?`<div><b>${fmt(c.topv)}</b><span>busiest street per day</span></div><div><b>${fmt(avgDay)}</b><span>typical street per day</span></div><div><b>${fmt(c.avg[st.hour])}</b><span>typical at ${$("#clock").textContent}</span></div>`:"";
+    chart([c.topProf,c.avg],[css.getPropertyValue("--hot"),css.getPropertyValue("--accent")]);
+    $("#iKey").innerHTML=`<span><i style="background:${css.getPropertyValue("--hot")}"></i>busiest street</span><span><i style="background:${css.getPropertyValue("--accent")}"></i>length-weighted average</span>`}
+  else{const t=sel.site,dk=st.day==="sat"||st.day==="sun"?"weekend":"weekday",p=t.profile[dk]||t.profile.weekday||t.profile.weekend;
+    $("#iTitle").textContent=t.name;$("#iSub").textContent=`${t.desc||""}${t.year?`, ${t.source==="cos_survey"?"survey":"last 4 weeks of"} ${t.year}`:""}, ${p===t.profile[dk]?dk:"other day type"}`;
+    const o=p?p.obs.reduce((a,b)=>a+(b||0),0):0,m=p?p.cv.reduce((a,b)=>a+(b||0),0):0;
+    $("#iStats").innerHTML=p?`<div><b>${fmt(o)}</b><span>measured per day</span></div><div><b>${fmt(m)}</b><span>model, site held out</span></div>`:"";
+    chart(p?[p.obs,p.cv]:[],[css.getPropertyValue("--ink"),css.getPropertyValue("--accent")],true);
+    $("#iKey").innerHTML=`<span><i style="background:${css.getPropertyValue("--ink")}"></i>measured</span><span><i style="background:${css.getPropertyValue("--accent")}"></i>predicted without seeing this site</span>`}}
+function chart(series,colors,dash){const c=$("#iChart"),r=c.getBoundingClientRect(),w=r.width,h=r.height,g=c.getContext("2d");c.width=w*DPR;c.height=h*DPR;g.setTransform(DPR,0,0,DPR,0,0);g.clearRect(0,0,w,h);
+  const vals=series.filter(Boolean).flat().filter(v=>v!=null),mx=Math.max(1,...vals),css=getComputedStyle(document.documentElement);
+  g.fillStyle=css.getPropertyValue("--line");g.fillRect(st.hour/23*(w-4)+1,0,2,h-12);
+  series.forEach((s,k)=>{if(!s)return;g.strokeStyle=colors[k];g.lineWidth=2;g.setLineDash(dash&&k===1?[4,3]:[]);g.beginPath();let pen=false;
+    s.forEach((v,i)=>{if(v==null){pen=false;return}const x=i/23*(w-4)+2,y=(h-14)-(h-18)*v/mx;pen?g.lineTo(x,y):g.moveTo(x,y);pen=true});g.stroke()});
+  g.setLineDash([]);g.fillStyle=css.getPropertyValue("--muted");g.font="11px Atkinson Hyperlegible, system-ui";g.fillText(fmt(mx)+"/h",2,10)}
+$("#info .close").onclick=()=>{st.sel=null;$("#info").classList.remove("show");draw()};
+
+document.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{st.day=b.dataset.day;document.querySelectorAll("[data-day]").forEach(x=>x.setAttribute("aria-pressed",x===b));drawPulse();draw();updateScenario();if(st.sel)showSel()});
+document.querySelectorAll("[data-area]").forEach(b=>b.onclick=()=>{st.area=b.dataset.area;document.querySelectorAll("[data-area]").forEach(x=>x.setAttribute("aria-pressed",x===b));st.sel=null;$("#info").classList.remove("show");fit();drawPulse();draw()});
+$("#about").onclick=()=>{const o=$("#aboutBox").classList.toggle("show");$("#about").setAttribute("aria-expanded",o)};
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{buildPalette();drawPulse();draw()});
+
+(async()=>{
+  D=JSON.parse($("#payload").textContent);
+  const ev=D.eval&&D.eval.spatial_cv&&D.eval.spatial_cv.net&&D.eval.spatial_cv.net.cos_survey;
+  if(ev){$("#rho").textContent=ev.site_rank_spearman.toFixed(2);$("#mdape").textContent=Math.round(ev.daily_mdape*100)+"%"}
+  await unpack("sydney_cbd");await unpack("liverpool");buildPalette();$("#loading").remove();
+  addEventListener("resize",()=>{resize()});resize();fit();setHour(st.hour);
+})().catch(e=>{$("#loading").textContent="The map data could not be unpacked: "+e.message+". Try a current version of Chrome, Safari or Firefox."});
+</script>
+</body>
+</html>
